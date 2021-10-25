@@ -7,6 +7,10 @@ const auth = require('./../auth.json');
 const logging = require('../Utils/logging');
 const db_alarms = require('../data_access/alarm_index');
 
+const alarm_index_regex = /a[\d+]/;
+const private_index_regex = /p[\d+]/;
+
+
 module.exports = {
     name: 'deleteAlarm',
     description: 'Deletes the alarm with a given id - **THIS ACTION CANNOT BE REVERTED**',
@@ -20,33 +24,15 @@ module.exports = {
             else {
                 if (cron_list[alarm_to_delete] !== undefined) {
                     try {
-                        if (utility_functions.isPrivateAlarm(alarm_to_delete)) {
-                            await Private_alarm_model.deleteOne(
-                                { alarm_id: alarm_to_delete }
-                            );
-                        } else if (utility_functions.isPublicAlarm(alarm_to_delete)) {
-                            if (msg.channel.type === 'dm') {
-                                msg.channel.send('Can only delete public alarms in a server, otherwise the bot does not know which alarms to delete.');
-                                return;
-                            }
-                            await Alarm_model.deleteOne({ alarm_id: alarm_to_delete });
-                        } else if (utility_functions.isOtaAlarm(alarm_to_delete)) {
-                            await db_alarms.delete_oneTimeAlarm_with_id(alarm_to_delete);
-                        } else if (utility_functions.isTTSAlarm(alarm_to_delete)) {
-                            if (msg.channel.type === 'dm') {
-                                msg.channel.send('Can only delete public alarms in a server, otherwise the bot does not know which alarms to delete.');
-                                return;
-                            }
-                            await db_alarms.delete_ttsAlarm_with_id(alarm_to_delete);
-                        }
-                        cron_list[alarm_to_delete].stop();
-                        delete cron_list[alarm_to_delete];
-                        msg.channel.send(`Sucessfully deleted alarm: ${alarm_to_delete}.`);
+                        await delete_alarm_from_database(cron_list, alarm_to_delete, msg);
                     } catch (e) {
                         logging.logger.info(`Error deleting alarm with id:${alarm_to_delete}... Please try again later!`);
                         logging.logger.error(e);
                         msg.channel.send(`Error deleting alarm with id:${alarm_to_delete}... Please try again later!`);
                     }
+                }
+                else if (index_regex.test(alarm_to_delete)) {
+                    let alarm = await db_alarms.get_all_alarms_from_user_and_guild(msg.author.id, msg.guild.id);
                 }
                 else {
                     msg.channel.send(`Impossible to delete alarm with id ${alarm_to_delete}.\nTry again later. If the problem persist use the bot support server`);
@@ -59,3 +45,28 @@ module.exports = {
 
     }
 };
+
+async function delete_alarm_from_database(cron_list, alarm_to_delete, msg) {
+    if (utility_functions.isPrivateAlarm(alarm_to_delete)) {
+        await Private_alarm_model.deleteOne(
+            { alarm_id: alarm_to_delete }
+        );
+    } else if (utility_functions.isPublicAlarm(alarm_to_delete)) {
+        if (msg.channel.type === 'dm') {
+            msg.channel.send('Can only delete public alarms in a server, otherwise the bot does not know which alarms to delete.');
+            return;
+        }
+        await Alarm_model.deleteOne({ alarm_id: alarm_to_delete });
+    } else if (utility_functions.isOtaAlarm(alarm_to_delete)) {
+        await db_alarms.delete_oneTimeAlarm_with_id(alarm_to_delete);
+    } else if (utility_functions.isTTSAlarm(alarm_to_delete)) {
+        if (msg.channel.type === 'dm') {
+            msg.channel.send('Can only delete public alarms in a server, otherwise the bot does not know which alarms to delete.');
+            return;
+        }
+        await db_alarms.delete_ttsAlarm_with_id(alarm_to_delete);
+    }
+    cron_list[alarm_to_delete].stop();
+    delete cron_list[alarm_to_delete];
+    msg.channel.send(`Sucessfully deleted alarm: ${alarm_to_delete}.`);
+}
