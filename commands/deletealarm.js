@@ -9,7 +9,9 @@ const db_alarms = require('../data_access/alarm_index');
 
 const alarm_index_regex = /a[\d+]/;
 const private_index_regex = /p[\d+]/;
-
+const tts_index_regex = /tts[\d+]/;
+const ota_index_regex = /oa[\d+]/;
+const pota_index_regex = /op[\d+]/;
 
 module.exports = {
     name: 'deleteAlarm',
@@ -31,12 +33,35 @@ module.exports = {
                         msg.channel.send(`Error deleting alarm with id:${alarm_to_delete}... Please try again later!`);
                     }
                 }
-                else if (index_regex.test(alarm_to_delete)) {
-                    let alarm = await db_alarms.get_all_alarms_from_user_and_guild(msg.author.id, msg.guild.id);
+                let alarms;
+                if (alarm_index_regex.test(alarm_to_delete)) {
+                    alarms = await db_alarms.get_all_alarms_from_user_and_guild(msg.author.id, msg.guild?.id);
+                }
+                else if (private_index_regex.test(alarm_to_delete)) {
+                    alarms = await db_alarms.get_all_privAlarms_from_user(msg.author.id);
+                }
+                else if (tts_index_regex.test(alarm_to_delete)) {
+                    alarms = await db_alarms.get_all_ttsalarms_from_user_and_guild(msg.author.id, msg.guild?.id);
+                }
+                else if (ota_index_regex.test(alarm_to_delete)) {
+                    alarms = await db_alarms.get_all_otas_from_user(msg.author.id, false, msg.guild?.id);
+                }
+                else if (pota_index_regex.test(alarm_to_delete)) {
+                    alarms = await db_alarms.get_all_otas_from_user(msg.author.id, false, undefined);
                 }
                 else {
                     msg.channel.send(`Impossible to delete alarm with id ${alarm_to_delete}.\nTry again later. If the problem persist use the bot support server`);
+                    return;
                 }
+                let matches = alarm_to_delete.match(/(\d+)/);
+                if (!matches) {
+                    msg.channel.send('Cannot delete, invalid parameter.');
+                    return;
+                }
+                let index = matches[0];
+                let alarm = alarms[index];
+                delete_alarm_from_database(cron_list, alarm.id, msg);
+
             }
         } else {
             msg.channel.send(`No arguments were passed to execute this command.\n

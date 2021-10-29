@@ -177,6 +177,7 @@ async function delete_all_public_oneTimeAlarm_from_user(author_id, guild_id) {
  * Fetches all private or channel one time alarms from a user from the db 
  * @param {String} author_id - The id of the user that sets it up if it is applicable
  * @param {Boolean} isPrivate  - If it is a private one time alarm or not, true for a private alarm, false otherwise
+ * @param {String} guild - The guild id
  */
 async function get_all_oneTimeAlarm_from_user(author_id, isPrivate, guild) {
     if (isPrivate) {
